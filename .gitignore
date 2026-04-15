@@ -1,0 +1,17 @@
+# Python environments
+venv/
+.venv/
+
+# Local secrets
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Local database
+db.sqlite3
+
+# OS/editor noise
+.DS_Store
+.vscode/
