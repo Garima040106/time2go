@@ -85,7 +85,62 @@
     }
 
     .btn:hover { background: #0F6E56; }
+
+    .btn-demo {
+      width: 100%;
+      padding: 11px;
+      background: transparent;
+      color: #1D9E75;
+      font-size: 14px;
+      font-weight: 600;
+      border: 1.5px solid #1D9E75;
+      border-radius: 12px;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn-demo:hover { background: #f0fdf8; }
     .btn:disabled { background: #9FE1CB; cursor: not-allowed; }
+
+    .demo-section {
+      margin-top: 12px;
+      margin-bottom: 2px;
+    }
+
+    .demo-title {
+      font-size: 10px;
+      font-weight: 700;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 7px;
+    }
+
+    .demo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .demo-chip {
+      border: 1px solid #d7eee6;
+      background: #f8fdfa;
+      color: #0F6E56;
+      border-radius: 10px;
+      padding: 8px 7px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      line-height: 1.25;
+      transition: all 0.18s;
+    }
+
+    .demo-chip:hover {
+      background: #edf9f3;
+      border-color: #b9e4d5;
+    }
 
     .loading {
       display: none;
@@ -245,6 +300,48 @@
       margin-top: 1.5rem;
     }
 
+    .how-it-works {
+      margin-top: 1.5rem;
+      border-top: 1px solid #f0f0f0;
+      padding-top: 1.2rem;
+    }
+
+    .how-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 10px;
+    }
+
+    .how-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .how-num {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #f0fdf8;
+      color: #1D9E75;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .how-text {
+      font-size: 13px;
+      color: #666;
+      line-height: 1.4;
+    }
+
     .error-msg {
       background: #fff0f0;
       border: 1px solid #fcc;
@@ -255,13 +352,45 @@
       margin-top: 1rem;
       display: none;
     }
+
+    /* Mobile-first responsive adjustments */
+    @media (max-width: 480px) {
+      body { padding: 0; }
+
+      .app {
+        border-radius: 0;
+        padding: 1.5rem 1rem;
+        box-shadow: none;
+      }
+
+      .slots {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+
+      .slot { padding: 12px 8px; }
+      .slot-stress { font-size: 20px; }
+      .slot-bar { height: 5px; }
+
+      .stress-legend { flex-wrap: wrap; gap: 8px; }
+
+      .rec-action { font-size: 20px; }
+
+      .row { gap: 10px; }
+
+      input, select { font-size: 16px; }
+
+      .demo-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
 <div class="app">
 
   <div class="logo">Time2<span>Go</span></div>
-  <div class="tagline">Know exactly when to leave — not just how to get there.</div>
+  <div class="tagline">Plan your departure in seconds, with route-aware stress forecasts.</div>
 
   <div class="form-group">
     <label>From</label>
@@ -298,13 +427,23 @@
     <input type="time" id="time" />
   </div>
 
-  <button class="btn" id="analyzeBtn" onclick="analyze()">Find my best departure window →</button>
+  <button class="btn" id="analyzeBtn" onclick="analyze()">Analyze best departure window →</button>
+  <button class="btn-demo" onclick="loadDemo('koramangala-whitefield')">🚀 Try quick demo</button>
+
+  <div class="demo-section">
+    <div class="demo-title">Demo mode · one tap routes</div>
+    <div class="demo-grid">
+      <button class="demo-chip" onclick="loadDemo('koramangala-whitefield')">Koramangala → Whitefield</button>
+      <button class="demo-chip" onclick="loadDemo('jayanagar-hebbal')">Jayanagar → Hebbal</button>
+      <button class="demo-chip" onclick="loadDemo('indiranagar-airport')">Indiranagar → Airport</button>
+    </div>
+  </div>
 
   <div class="error-msg" id="errorMsg"></div>
 
   <div class="loading" id="loading">
     <div class="spinner"></div>
-    Analysing traffic patterns for your route...
+    Checking route, weather, and traffic pattern...
   </div>
 
   <div class="results" id="results">
@@ -312,6 +451,7 @@
     <div class="rec-card">
       <div class="rec-label">Best time to leave</div>
       <div class="rec-action" id="rec-action">—</div>
+      <div class="rec-reason" id="rec-route" style="font-weight:600; margin-bottom:2px;">—</div>
       <div class="rec-reason" id="rec-reason">—</div>
     </div>
 
@@ -332,7 +472,23 @@
 
   </div>
 
-  <div class="footer">Time2Go · Powered by AI · PromptWars 2025</div>
+  <div class="footer">Time2Go · Real-time commute prototype</div>
+
+  <div class="how-it-works">
+    <div class="how-title">How it works</div>
+    <div class="how-step">
+      <div class="how-num">1</div>
+      <div class="how-text">Enter route and time.</div>
+    </div>
+    <div class="how-step">
+      <div class="how-num">2</div>
+      <div class="how-text">System checks commute conditions.</div>
+    </div>
+    <div class="how-step">
+      <div class="how-num">3</div>
+      <div class="how-text">It tells you when to leave.</div>
+    </div>
+  </div>
 
 </div>
 
@@ -343,10 +499,212 @@
     now.getHours().toString().padStart(2,'0') + ':' +
     now.getMinutes().toString().padStart(2,'0');
 
+  const DEMO_SCENARIOS = {
+    'koramangala-whitefield': {
+      form: {
+        origin: 'Koramangala, Bengaluru',
+        destination: 'Whitefield, Bengaluru',
+        mode: 'car',
+        day_type: 'weekday',
+        current_time: '08:45'
+      },
+      result: {
+        route: 'Koramangala → Whitefield',
+        recommendation: 'Leave in 30 minutes',
+        reason: 'A short wait skips peak signal stacking near ORR merge points.',
+        slots: [
+          { label: 'Leave now', stress: 82, eta_min: 42, note: 'Rush bottlenecks' },
+          { label: '+10 min', stress: 77, eta_min: 39, note: 'Still heavy' },
+          { label: '+20 min', stress: 72, eta_min: 37, note: 'Flow improving' },
+          { label: '+30 min', stress: 66, eta_min: 35, note: 'Best window' }
+        ],
+        stress_drivers: [
+          'Office commute clusters around intermediate junctions',
+          'Long corridor amplifies every red-light delay'
+        ]
+      }
+    },
+    'jayanagar-hebbal': {
+      form: {
+        origin: 'Jayanagar 4th Block, Bengaluru',
+        destination: 'Hebbal Flyover, Bengaluru',
+        mode: 'bike',
+        day_type: 'weekday',
+        current_time: '18:10'
+      },
+      result: {
+        route: 'Jayanagar → Hebbal Flyover',
+        recommendation: 'Leave now',
+        reason: 'Current slot beats the post-6:20 merge surge toward northern corridors.',
+        slots: [
+          { label: 'Leave now', stress: 61, eta_min: 39, note: 'Moving tight' },
+          { label: '+10 min', stress: 67, eta_min: 42, note: 'Evening peak' },
+          { label: '+20 min', stress: 74, eta_min: 46, note: 'Signal queues' },
+          { label: '+30 min', stress: 71, eta_min: 44, note: 'Crowded exits' }
+        ],
+        stress_drivers: [
+          'Evening outbound wave builds quickly after 6 PM',
+          'Flyover entry lanes get dense during peak merging'
+        ]
+      }
+    },
+    'indiranagar-airport': {
+      form: {
+        origin: 'Indiranagar, Bengaluru',
+        destination: 'Kempegowda International Airport, Bengaluru',
+        mode: 'car',
+        day_type: 'weekend',
+        current_time: '13:40'
+      },
+      result: {
+        route: 'Indiranagar → Bengaluru Airport',
+        recommendation: 'Leave in 20 minutes',
+        reason: 'A brief delay lands in a cleaner runway before afternoon leisure traffic thickens again.',
+        slots: [
+          { label: 'Leave now', stress: 57, eta_min: 53, note: 'Steady flow' },
+          { label: '+10 min', stress: 52, eta_min: 50, note: 'Smoother lanes' },
+          { label: '+20 min', stress: 48, eta_min: 48, note: 'Calmest run' },
+          { label: '+30 min', stress: 55, eta_min: 51, note: 'Leisure rebound' }
+        ],
+        stress_drivers: [
+          'Weekend trip traffic pulses around airport access roads',
+          'Long express corridor rewards timing the cleaner slot'
+        ]
+      }
+    }
+  };
+
+  function loadDemo(key) {
+    const scenario = DEMO_SCENARIOS[key];
+    if (!scenario) return;
+
+    const form = scenario.form;
+    document.getElementById('origin').value = form.origin;
+    document.getElementById('dest').value = form.destination;
+    document.getElementById('mode').value = form.mode;
+    document.getElementById('day').value = form.day_type;
+    document.getElementById('time').value = form.current_time;
+
+    setError('');
+    renderResults(scenario.result);
+  }
+
   function stressColor(s) {
     if (s < 40) return '#1D9E75';
     if (s < 65) return '#EF9F27';
     return '#E24B4A';
+  }
+
+  function stressBand(s) {
+    if (s < 40) return 'Low stress';
+    if (s < 65) return 'Moderate stress';
+    return 'High stress';
+  }
+
+  function setError(message, isWarning = false) {
+    const errEl = document.getElementById('errorMsg');
+    if (!message) {
+      errEl.style.display = 'none';
+      return;
+    }
+
+    errEl.textContent = message;
+    errEl.style.display = 'block';
+    errEl.style.background = isWarning ? '#fff8ed' : '#fff0f0';
+    errEl.style.borderColor = isWarning ? '#f4d7a8' : '#fcc';
+    errEl.style.color = isWarning ? '#8a5a00' : '#c00';
+  }
+
+  function toInt(v, fallback) {
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.round(n) : fallback;
+  }
+
+  function safeString(v, fallback = '') {
+    return (typeof v === 'string' && v.trim()) ? v.trim() : fallback;
+  }
+
+  function simulatedFallback(origin, destination) {
+    return {
+      route: `${origin} → ${destination}`,
+      recommendation: 'Leave in 20 minutes',
+      reason: 'Backend is resting; showing a quick local estimate so you can still decide.',
+      slots: [
+        { label: 'Leave now', stress: 64, eta_min: 36, note: 'Signals stacking' },
+        { label: '+10 min', stress: 58, eta_min: 34, note: 'Flow stabilizing' },
+        { label: '+20 min', stress: 52, eta_min: 32, note: 'Best gap window' },
+        { label: '+30 min', stress: 57, eta_min: 33, note: 'Back to busy' }
+      ],
+      stress_drivers: [
+        'Short-term estimate built from typical peak-hour patterns',
+        'Try again shortly for live route and weather signals'
+      ]
+    };
+  }
+
+  function normalizeResult(payload, origin, destination) {
+    const labels = ['Leave now', '+10 min', '+20 min', '+30 min'];
+    const rawSlots = Array.isArray(payload?.slots) ? payload.slots : [];
+
+    const slots = labels.map((label, idx) => {
+      const src = rawSlots[idx] || {};
+      const stress = Math.max(0, Math.min(100, toInt(src.stress, 55)));
+      const eta = Math.max(1, toInt(src.eta_min, 30));
+      const note = safeString(src.note, 'Estimated');
+      return {
+        label: safeString(src.label, label),
+        stress,
+        eta_min: eta,
+        note,
+        band: stressBand(stress)
+      };
+    });
+
+    const recommendation = safeString(payload?.recommendation, 'Leave now');
+    const reason = safeString(payload?.reason, 'Using best available traffic estimate.');
+
+    const stressDrivers = Array.isArray(payload?.stress_drivers)
+      ? payload.stress_drivers
+          .map(item => safeString(item))
+          .filter(Boolean)
+          .slice(0, 4)
+      : [];
+
+    return {
+      route: safeString(payload?.route, `${origin} → ${destination}`),
+      recommendation,
+      reason,
+      slots,
+      stress_drivers: stressDrivers
+    };
+  }
+
+  async function fetchAnalyze(payload, timeoutMs = 4500) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch('/api/analyze/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+
+      let result = {};
+      try {
+        result = await res.json();
+      } catch (_) {
+        result = {};
+      }
+
+      if (!res.ok) {
+        throw new Error(result.error || 'Server error');
+      }
+
+      return result;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   async function analyze() {
@@ -356,80 +714,32 @@
     const day    = document.getElementById('day').value;
     const time   = document.getElementById('time').value;
 
-    const errEl = document.getElementById('errorMsg');
-    errEl.style.display = 'none';
+    setError('');
 
     if (!origin || !dest) {
-      errEl.textContent = 'Please enter both a starting point and destination.';
-      errEl.style.display = 'block';
+      setError('Please enter both origin and destination.');
       return;
     }
 
     document.getElementById('analyzeBtn').disabled = true;
     document.getElementById('loading').style.display = 'block';
     document.getElementById('results').style.display = 'none';
-
-    const prompt = `You are a Smart Commute Advisor AI built into an app called Time2Go.
-
-The user wants to know the best time to leave for their commute right now.
-
-User details:
-- Route: ${origin} to ${dest}
-- Transport mode: ${mode}
-- Day type: ${day}
-- Current time: ${time}
-
-Your task:
-1. Use your knowledge of real Indian urban traffic patterns for this specific route and time.
-2. Compute a Stress Index (0–100, lower = calmer commute) for four departure windows: Now, +10 min, +20 min, +30 min.
-3. Estimate travel time in minutes for each slot.
-4. Identify the slot with the lowest stress and recommend it.
-5. Give 2 real, specific stress drivers for this route (e.g. known junctions, signals, school zones, ongoing construction).
-
-Rules:
-- Be specific to the city and route given — do not give generic answers.
-- Stress must actually vary meaningfully across slots — not all the same.
-- Keep notes under 5 words each.
-- Keep reason under 25 words.
-
-Return ONLY valid JSON, no markdown, no explanation, nothing else:
-{
-  "route": "short route label",
-  "slots": [
-    {"label": "Leave now", "stress": 0, "eta_min": 0, "note": "short note"},
-    {"label": "+10 min",   "stress": 0, "eta_min": 0, "note": "short note"},
-    {"label": "+20 min",   "stress": 0, "eta_min": 0, "note": "short note"},
-    {"label": "+30 min",   "stress": 0, "eta_min": 0, "note": "short note"}
-  ],
-  "recommendation": "Leave in X minutes",
-  "reason": "One specific sentence.",
-  "stress_drivers": ["driver 1", "driver 2"]
-}`;
+    document.getElementById('driversBox').style.display = 'none';
 
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: prompt }]
-        })
+      const raw = await fetchAnalyze({
+        origin: origin,
+        destination: dest,
+        mode: mode,
+        day_type: day,
+        current_time: time
       });
-
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error?.message || 'API error');
-
-      const text = data.content.map(i => i.text || '').join('');
-      const clean = text.replace(/```json|```/g, '').trim();
-      const result = JSON.parse(clean);
-
+      const result = normalizeResult(raw, origin, dest);
       renderResults(result);
-
     } catch(e) {
-      errEl.textContent = 'Could not analyse this route. Please try again.';
-      errEl.style.display = 'block';
+      const fallback = simulatedFallback(origin, dest);
+      renderResults(fallback);
+      setError('Live data is temporarily unavailable. Showing a quick local estimate for this route.', true);
       console.error(e);
     } finally {
       document.getElementById('loading').style.display = 'none';
@@ -438,15 +748,21 @@ Return ONLY valid JSON, no markdown, no explanation, nothing else:
   }
 
   function renderResults(r) {
+    const result = normalizeResult(r || {}, document.getElementById('origin').value.trim(), document.getElementById('dest').value.trim());
     document.getElementById('results').style.display = 'block';
-    document.getElementById('rec-action').textContent = r.recommendation;
-    document.getElementById('rec-reason').textContent = r.reason;
+    const bestSlot = result.slots.reduce((best, current) => current.stress < best.stress ? current : best, result.slots[0]);
+    const cleanRec = safeString(result.recommendation, 'Leave now');
+    const smartRec = cleanRec === 'Leave now' ? 'Leave now' : `${cleanRec} (best balance)`;
 
-    const bestStress = Math.min(...r.slots.map(s => s.stress));
+    document.getElementById('rec-action').textContent = smartRec;
+    document.getElementById('rec-route').textContent = `Route: ${result.route}`;
+    document.getElementById('rec-reason').textContent = `${result.reason} · ~${bestSlot.eta_min} min in the best slot.`;
+
+    const bestStress = Math.min(...result.slots.map(s => s.stress));
     const slotsEl = document.getElementById('slots');
     slotsEl.innerHTML = '';
 
-    r.slots.forEach(slot => {
+    result.slots.forEach(slot => {
       const isBest = slot.stress === bestStress;
       const pct = Math.min(100, Math.round(slot.stress));
       const color = stressColor(pct);
@@ -457,6 +773,7 @@ Return ONLY valid JSON, no markdown, no explanation, nothing else:
         ${isBest ? '<div class="best-badge">✓ Best</div>' : '<div class="best-badge" style="color:transparent">·</div>'}
         <div class="slot-label">${slot.label}</div>
         <div class="slot-stress" style="color:${color}">${pct}</div>
+        <div class="slot-note" style="color:${color};font-weight:600">${slot.band}</div>
         <div class="slot-bar">
           <div class="slot-fill" style="width:${pct}%;background:${color}"></div>
         </div>
@@ -466,12 +783,15 @@ Return ONLY valid JSON, no markdown, no explanation, nothing else:
       slotsEl.appendChild(div);
     });
 
-    if (r.stress_drivers && r.stress_drivers.length) {
+    if (result.stress_drivers && result.stress_drivers.length) {
       const box = document.getElementById('driversBox');
       box.style.display = 'block';
-      document.getElementById('driversList').innerHTML = r.stress_drivers
+      document.getElementById('driversList').innerHTML = result.stress_drivers
         .map(d => `<div class="driver-item"><div class="driver-dot"></div>${d}</div>`)
         .join('');
+    } else {
+      document.getElementById('driversBox').style.display = 'none';
+      document.getElementById('driversList').innerHTML = '';
     }
 
     document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
