@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Time2Go — Smart Departure Timer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f5f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    .app {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 2rem 1.5rem;
+      max-width: 440px;
+      width: 100%;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+
+    .logo {
+      font-size: 26px;
+      font-weight: 700;
+      color: #111;
+      letter-spacing: -0.5px;
+    }
+
+    .logo span { color: #1D9E75; }
+
+    .tagline {
+      font-size: 13px;
+      color: #888;
+      margin-top: 4px;
+      margin-bottom: 1.5rem;
+    }
+
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 5px;
+    }
+
+    .form-group { margin-bottom: 14px; }
+
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 15px;
+      border: 1px solid #e0e0e0;
+      border-radius: 10px;
+      background: #fafafa;
+      color: #111;
+      outline: none;
+      transition: border 0.2s;
+    }
+
+    input:focus, select:focus { border-color: #1D9E75; background: #fff; }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .btn {
+      width: 100%;
+      padding: 13px;
+      background: #1D9E75;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      margin-top: 6px;
+      transition: background 0.2s;
+    }
+
+    .btn:hover { background: #0F6E56; }
+    .btn:disabled { background: #9FE1CB; cursor: not-allowed; }
+
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 2rem 0;
+      color: #888;
+      font-size: 14px;
+    }
+
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid #e0e0e0;
+      border-top-color: #1D9E75;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 10px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .results { display: none; margin-top: 1.5rem; }
+
+    .rec-card {
+      background: linear-gradient(135deg, #E1F5EE, #d4f0e4);
+      border: 1px solid #9FE1CB;
+      border-radius: 14px;
+      padding: 1.1rem 1.25rem;
+      margin-bottom: 1.2rem;
+    }
+
+    .rec-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: #0F6E56;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    .rec-action {
+      font-size: 24px;
+      font-weight: 700;
+      color: #085041;
+      margin: 5px 0 4px;
+    }
+
+    .rec-reason { font-size: 13px; color: #0F6E56; line-height: 1.5; }
+
+    .slots-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+    }
+
+    .slots {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 1.2rem;
+    }
+
+    .slot {
+      background: #fafafa;
+      border: 1px solid #e8e8e8;
+      border-radius: 12px;
+      padding: 10px 6px;
+      text-align: center;
+      transition: transform 0.1s;
+    }
+
+    .slot.best {
+      border: 2px solid #1D9E75;
+      background: #f0fdf8;
+    }
+
+    .best-badge {
+      font-size: 9px;
+      font-weight: 700;
+      color: #1D9E75;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 3px;
+    }
+
+    .slot-label { font-size: 11px; color: #aaa; margin-bottom: 4px; }
+    .slot-stress { font-size: 22px; font-weight: 700; color: #111; }
+    .slot.best .slot-stress { color: #085041; }
+
+    .slot-bar {
+      height: 4px;
+      background: #ececec;
+      border-radius: 2px;
+      margin: 5px 0;
+      overflow: hidden;
+    }
+
+    .slot-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+    .slot-eta { font-size: 11px; color: #aaa; }
+    .slot-note { font-size: 10px; color: #bbb; margin-top: 3px; line-height: 1.3; }
+
+    .stress-legend {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 1.2rem;
+      font-size: 11px;
+      color: #aaa;
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 4px;
+    }
+
+    .drivers {
+      background: #fafafa;
+      border: 1px solid #ececec;
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+
+    .drivers-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+    }
+
+    .driver-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #444;
+      padding: 3px 0;
+    }
+
+    .driver-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #D85A30;
+      flex-shrink: 0;
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 11px;
+      color: #ccc;
+      margin-top: 1.5rem;
+    }
+
+    .error-msg {
+      background: #fff0f0;
+      border: 1px solid #fcc;
+      color: #c00;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 13px;
+      margin-top: 1rem;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <div class="logo">Time2<span>Go</span></div>
+  <div class="tagline">Know exactly when to leave — not just how to get there.</div>
+
+  <div class="form-group">
+    <label>From</label>
+    <input type="text" id="origin" placeholder="e.g. Koramangala, Bengaluru" />
+  </div>
+
+  <div class="form-group">
+    <label>To</label>
+    <input type="text" id="dest" placeholder="e.g. MG Road, Bengaluru" />
+  </div>
+
+  <div class="row">
+    <div class="form-group">
+      <label>Mode</label>
+      <select id="mode">
+        <option value="bike">🏍 Bike</option>
+        <option value="car">🚗 Car</option>
+        <option value="metro">🚇 Metro</option>
+        <option value="bus">🚌 Bus</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Day type</label>
+      <select id="day">
+        <option value="weekday">Weekday</option>
+        <option value="weekend">Weekend</option>
+        <option value="holiday">Holiday</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>Current time</label>
+    <input type="time" id="time" />
+  </div>
+
+  <button class="btn" id="analyzeBtn" onclick="analyze()">Find my best departure window →</button>
+
+  <div class="error-msg" id="errorMsg"></div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    Analysing traffic patterns for your route...
+  </div>
+
+  <div class="results" id="results">
+
+    <div class="rec-card">
+      <div class="rec-label">Best time to leave</div>
+      <div class="rec-action" id="rec-action">—</div>
+      <div class="rec-reason" id="rec-reason">—</div>
+    </div>
+
+    <div class="slots-label">Stress index by departure slot</div>
+
+    <div class="stress-legend">
+      <span><span class="legend-dot" style="background:#1D9E75"></span>Low (&lt;40)</span>
+      <span><span class="legend-dot" style="background:#EF9F27"></span>Medium (40–65)</span>
+      <span><span class="legend-dot" style="background:#E24B4A"></span>High (&gt;65)</span>
+    </div>
+
+    <div class="slots" id="slots"></div>
+
+    <div class="drivers" id="driversBox" style="display:none">
+      <div class="drivers-title">What's driving stress on this route</div>
+      <div id="driversList"></div>
+    </div>
+
+  </div>
+
+  <div class="footer">Time2Go · Powered by AI · PromptWars 2025</div>
+
+</div>
+
+<script>
+  // Set current time on load
+  const now = new Date();
+  document.getElementById('time').value =
+    now.getHours().toString().padStart(2,'0') + ':' +
+    now.getMinutes().toString().padStart(2,'0');
+
+  function stressColor(s) {
+    if (s < 40) return '#1D9E75';
+    if (s < 65) return '#EF9F27';
+    return '#E24B4A';
+  }
+
+  async function analyze() {
+    const origin = document.getElementById('origin').value.trim();
+    const dest   = document.getElementById('dest').value.trim();
+    const mode   = document.getElementById('mode').value;
+    const day    = document.getElementById('day').value;
+    const time   = document.getElementById('time').value;
+
+    const errEl = document.getElementById('errorMsg');
+    errEl.style.display = 'none';
+
+    if (!origin || !dest) {
+      errEl.textContent = 'Please enter both a starting point and destination.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    document.getElementById('analyzeBtn').disabled = true;
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+
+    const prompt = `You are a Smart Commute Advisor AI built into an app called Time2Go.
+
+The user wants to know the best time to leave for their commute right now.
+
+User details:
+- Route: ${origin} to ${dest}
+- Transport mode: ${mode}
+- Day type: ${day}
+- Current time: ${time}
+
+Your task:
+1. Use your knowledge of real Indian urban traffic patterns for this specific route and time.
+2. Compute a Stress Index (0–100, lower = calmer commute) for four departure windows: Now, +10 min, +20 min, +30 min.
+3. Estimate travel time in minutes for each slot.
+4. Identify the slot with the lowest stress and recommend it.
+5. Give 2 real, specific stress drivers for this route (e.g. known junctions, signals, school zones, ongoing construction).
+
+Rules:
+- Be specific to the city and route given — do not give generic answers.
+- Stress must actually vary meaningfully across slots — not all the same.
+- Keep notes under 5 words each.
+- Keep reason under 25 words.
+
+Return ONLY valid JSON, no markdown, no explanation, nothing else:
+{
+  "route": "short route label",
+  "slots": [
+    {"label": "Leave now", "stress": 0, "eta_min": 0, "note": "short note"},
+    {"label": "+10 min",   "stress": 0, "eta_min": 0, "note": "short note"},
+    {"label": "+20 min",   "stress": 0, "eta_min": 0, "note": "short note"},
+    {"label": "+30 min",   "stress": 0, "eta_min": 0, "note": "short note"}
+  ],
+  "recommendation": "Leave in X minutes",
+  "reason": "One specific sentence.",
+  "stress_drivers": ["driver 1", "driver 2"]
+}`;
+
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          messages: [{ role: "user", content: prompt }]
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error?.message || 'API error');
+
+      const text = data.content.map(i => i.text || '').join('');
+      const clean = text.replace(/```json|```/g, '').trim();
+      const result = JSON.parse(clean);
+
+      renderResults(result);
+
+    } catch(e) {
+      errEl.textContent = 'Could not analyse this route. Please try again.';
+      errEl.style.display = 'block';
+      console.error(e);
+    } finally {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('analyzeBtn').disabled = false;
+    }
+  }
+
+  function renderResults(r) {
+    document.getElementById('results').style.display = 'block';
+    document.getElementById('rec-action').textContent = r.recommendation;
+    document.getElementById('rec-reason').textContent = r.reason;
+
+    const bestStress = Math.min(...r.slots.map(s => s.stress));
+    const slotsEl = document.getElementById('slots');
+    slotsEl.innerHTML = '';
+
+    r.slots.forEach(slot => {
+      const isBest = slot.stress === bestStress;
+      const pct = Math.min(100, Math.round(slot.stress));
+      const color = stressColor(pct);
+
+      const div = document.createElement('div');
+      div.className = 'slot' + (isBest ? ' best' : '');
+      div.innerHTML = `
+        ${isBest ? '<div class="best-badge">✓ Best</div>' : '<div class="best-badge" style="color:transparent">·</div>'}
+        <div class="slot-label">${slot.label}</div>
+        <div class="slot-stress" style="color:${color}">${pct}</div>
+        <div class="slot-bar">
+          <div class="slot-fill" style="width:${pct}%;background:${color}"></div>
+        </div>
+        <div class="slot-eta">${slot.eta_min} min</div>
+        <div class="slot-note">${slot.note}</div>
+      `;
+      slotsEl.appendChild(div);
+    });
+
+    if (r.stress_drivers && r.stress_drivers.length) {
+      const box = document.getElementById('driversBox');
+      box.style.display = 'block';
+      document.getElementById('driversList').innerHTML = r.stress_drivers
+        .map(d => `<div class="driver-item"><div class="driver-dot"></div>${d}</div>`)
+        .join('');
+    }
+
+    document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+</script>
+</body>
+</html>
