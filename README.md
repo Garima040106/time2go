@@ -1,106 +1,215 @@
 # Time2Go
 
-Tiny Django backend + frontend app for commute departure suggestions.
+Time2Go is a stress-aware commute planner that recommends the best departure slot across the next 30 minutes.
 
-## What this setup includes
+It combines route context, time-window traffic behavior, weather impact, and safety-aware preferences to return practical advice in seconds.
 
-- One frontend page at `/` (served from `index.html` with the existing layout).
-- One backend endpoint: `POST /api/analyze/`.
-- Real-data commute pipeline using free services where available:
-	- Default mode: local simulation (no external dependency required)
-	- Optional route signal mode: OpenStreetMap Nominatim + OSRM public API
-- No database usage in app logic.
-- No auth.
-- CORS enabled (`CORS_ALLOW_ALL_ORIGINS=True`) for local frontend/backend flexibility.
-- Smart fallback heuristics if any external API is unavailable or slow.
+## Why this project matters
 
-## Request payload
+- Commute decisions are usually guesswork.
+- Existing map ETAs do not always answer: "Should I leave now or wait 10-20 minutes?"
+- Time2Go focuses on decision quality, not only route calculation.
+
+## What Time2Go does
+
+- Scores 4 departure slots: `Leave now`, `+10 min`, `+20 min`, `+30 min`
+- Predicts stress, ETA, traffic level, and safety signals per slot
+- Generates a human-friendly recommendation and reason
+- Supports safety-aware commute preference (`prefer_safe_commute`)
+- Adds optional carpool and timing insights where relevant
+- Uses deterministic fallbacks when external data is slow/unavailable
+
+## Tech stack
+
+- Backend: Django 6 (`api/commute_engine.py`, `api/views.py`)
+- Frontend: React 18 (`src/`)
+- Data sources (optional):
+	- OpenStreetMap Nominatim (geocoding)
+	- OSRM (route signal)
+	- Open-Meteo (weather)
+
+No paid API key is required.
+
+## Architecture at a glance
+
+1. Frontend posts route + context to `POST /api/analyze/`
+2. Backend validates and normalizes request
+3. Commute engine computes slot-level scoring
+4. Response returns normalized shape with resilient fallback guarantees
+
+## API contract
+
+Endpoint:
 
 `POST /api/analyze/`
+
+### Request example
 
 ```json
 {
 	"origin": "Koramangala, Bengaluru",
 	"destination": "Whitefield, Bengaluru",
-	"mode": "bike",
+	"mode": "car",
 	"day_type": "weekday",
-	"current_time": "08:45"
+	"current_time": "08:45",
+	"prefer_safe_commute": true
 }
 ```
 
-## Response shape
+### Response example
 
 ```json
 {
-	"route": "",
+	"route": "Koramangala -> Whitefield",
 	"slots": [
-		{"label": "Leave now", "stress": 0, "eta_min": 0, "traffic_level": "medium", "note": "", "safety_note": ""},
-		{"label": "+10 min", "stress": 0, "eta_min": 0, "traffic_level": "low", "note": "", "safety_note": ""},
-		{"label": "+20 min", "stress": 0, "eta_min": 0, "traffic_level": "low", "note": "", "safety_note": ""},
-		{"label": "+30 min", "stress": 0, "eta_min": 0, "traffic_level": "high", "note": "", "safety_note": ""}
+		{
+			"label": "Leave now",
+			"stress": 72,
+			"eta_min": 39,
+			"traffic_level": "high",
+			"note": "wet roads; crowded commute",
+			"safety_risk": "medium",
+			"safety_note": "crowded commute"
+		},
+		{
+			"label": "+10 min",
+			"stress": 61,
+			"eta_min": 35,
+			"traffic_level": "medium",
+			"note": "smooth ride; safer commute option",
+			"safety_risk": "low",
+			"safety_note": "well-lit route"
+		}
 	],
-	"recommendation": "",
-	"reason": "",
-	"stress_drivers": [],
-	"time_insight": "",
-	"carpool_suggestion": ""
+	"recommendation": "Wait 10 minutes",
+	"reason": "A brief wait should noticeably reduce traffic stress on this route.",
+	"stress_drivers": [
+		"Traffic level blended with live route-speed signal",
+		"ORR tech corridor rush is slowing this stretch"
+	],
+	"time_insight": "Waiting 10 minutes is likely to keep arrival time nearly unchanged.",
+	"prefer_safe_commute": true,
+	"carpool_suggestion": "High chance of shared rides on this route"
 }
 ```
 
-Notes:
-- Required core fields: recommendation, reason, slots (stress + eta_min + note), stress_drivers.
-- Optional enrichments: slot-level safety_note, top-level carpool_suggestion, and time_insight.
+### Notes
 
-## Run locally
+- Core fields always present: `route`, `slots`, `recommendation`, `reason`, `stress_drivers`
+- Slot fields always normalized: `label`, `stress`, `eta_min`, `traffic_level`, `note`, `safety_risk`
+- Optional enrichments: `safety_note`, `time_insight`, `carpool_suggestion`
 
-### Backend
+## Local setup
 
-1. Install dependencies:
+### 1. Backend setup (Django)
+
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Optional env in `.env`:
-
-No API key is required. To enable lightweight live route probing, set:
-
-```bash
-TIME2GO_USE_ROUTE_API=1
-```
-
-3. Start server:
+Run server:
 
 ```bash
 python manage.py runserver
 ```
 
-The API will be available at `http://127.0.0.1:8000/api/analyze/`.
+Backend URL:
 
-### Frontend (React)
+`http://127.0.0.1:8000/`
 
-The frontend is a React 18 app with functional components. To run locally:
+### 2. Frontend setup (React)
 
-1. Install Node dependencies:
+Install dependencies:
 
 ```bash
 npm install
 ```
 
-2. Start development server:
+Run dev server:
 
 ```bash
 npm start
 ```
 
-3. The dev server will open at `http://127.0.0.1:3000/`.
+Frontend URL:
 
-The React app makes API requests to `http://127.0.0.1:8000/api/analyze/`. Ensure the backend is running before using the frontend.
+`http://127.0.0.1:3000/`
 
-**Build for production:**
+Production build:
 
 ```bash
 npm run build
 ```
 
-This creates an optimized production build in the `build/` directory.
+## Environment variables
+
+Create a `.env` in project root (optional).
+
+### Engine behavior
+
+```bash
+# Enable lightweight live route probe via Nominatim + OSRM
+TIME2GO_USE_ROUTE_API=1
+```
+
+### Django security/config
+
+```bash
+DJANGO_SECRET_KEY=replace-in-production
+DJANGO_DEBUG=True
+DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
+
+# CORS/CSRF
+DJANGO_CORS_ALLOW_ALL_ORIGINS=True
+DJANGO_CORS_ALLOWED_ORIGINS=http://127.0.0.1:3000,http://localhost:3000
+DJANGO_CSRF_TRUSTED_ORIGINS=http://127.0.0.1:3000,http://localhost:3000
+
+# Production-only knobs
+DJANGO_SECURE_SSL_REDIRECT=True
+DJANGO_SECURE_HSTS_SECONDS=31536000
+```
+
+## Security improvements included
+
+- Env-driven Django secret/debug/allowed-hosts
+- CORS and CSRF trusted-origin controls
+- Hardened response/clickjacking/referrer settings
+- Production HTTPS/HSTS/cookie secure options
+- API request hardening:
+	- Content-Type enforcement (`application/json`)
+	- Request body size limit
+	- Input normalization and strict field validation
+
+## Validation and quality checks
+
+Backend tests:
+
+```bash
+python manage.py test
+```
+
+Frontend build check:
+
+```bash
+npm run build
+```
+
+Current status in this repo:
+
+- Backend tests passing
+- Frontend production build passing
+
+## Project structure
+
+```text
+api/                  # Commute scoring engine + API views
+time2go_backend/      # Django project settings and URL wiring
+src/                  # React app UI components and utilities
+public/               # React static template
+```
+
+## Hackathon pitch (one-liner)
+
+Time2Go turns raw commute uncertainty into a clear action: leave now or wait for a lower-stress window.
