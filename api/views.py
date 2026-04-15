@@ -7,15 +7,48 @@ from django.views.decorators.http import require_POST
 from .commute_engine import analyze_commute
 
 SLOT_LABELS = ["Leave now", "+10 min", "+20 min", "+30 min"]
+SLOT_OFFSETS_MIN = [0, 10, 20, 30]
 
 
 FALLBACK_RESPONSE = {
     "route": "Unable to determine",
     "slots": [
-        {"label": "Leave now", "stress": 45, "eta_min": 25, "note": "Moderate traffic"},
-        {"label": "+10 min", "stress": 40, "eta_min": 23, "note": "Slightly better"},
-        {"label": "+20 min", "stress": 38, "eta_min": 22, "note": "Easing up"},
-        {"label": "+30 min", "stress": 42, "eta_min": 24, "note": "Picking up again"},
+        {
+            "label": "Leave now",
+            "stress": 45,
+            "eta_min": 25,
+            "traffic_level": "medium",
+            "note": "wet roads",
+            "safety_risk": "medium",
+            "safety_note": "crowded commute",
+        },
+        {
+            "label": "+10 min",
+            "stress": 40,
+            "eta_min": 23,
+            "traffic_level": "low",
+            "note": "smooth ride",
+            "safety_risk": "low",
+            "safety_note": "well-lit route",
+        },
+        {
+            "label": "+20 min",
+            "stress": 38,
+            "eta_min": 22,
+            "traffic_level": "low",
+            "note": "smooth ride",
+            "safety_risk": "low",
+            "safety_note": "well-lit route",
+        },
+        {
+            "label": "+30 min",
+            "stress": 42,
+            "eta_min": 24,
+            "traffic_level": "medium",
+            "note": "slow traffic",
+            "safety_risk": "medium",
+            "safety_note": "crowded commute",
+        },
     ],
     "recommendation": "Leave in 20 minutes",
     "reason": "Traffic analysis unavailable — showing estimated averages for this time window.",
@@ -23,6 +56,7 @@ FALLBACK_RESPONSE = {
         "Live traffic data temporarily unavailable",
         "Estimates based on general patterns",
     ],
+    "prefer_safe_commute": False,
 }
 
 
@@ -33,27 +67,90 @@ def _coerce_int(value, default):
         return default
 
 
+def _coerce_bool(value, default=False):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "yes", "on"}:
+            return True
+        if normalized in {"0", "false", "no", "off", ""}:
+            return False
+    return default
+
+
 def _default_slot_template():
     return [
-        {"label": "Leave now", "stress": 45, "eta_min": 25, "note": "Moderate traffic"},
-        {"label": "+10 min", "stress": 40, "eta_min": 23, "note": "Slightly better"},
-        {"label": "+20 min", "stress": 38, "eta_min": 22, "note": "Easing up"},
-        {"label": "+30 min", "stress": 42, "eta_min": 24, "note": "Picking up again"},
+        {
+            "label": "Leave now",
+            "stress": 45,
+            "eta_min": 25,
+            "traffic_level": "medium",
+            "note": "wet roads",
+            "safety_risk": "medium",
+            "safety_note": "crowded commute",
+        },
+        {
+            "label": "+10 min",
+            "stress": 40,
+            "eta_min": 23,
+            "traffic_level": "low",
+            "note": "smooth ride",
+            "safety_risk": "low",
+            "safety_note": "well-lit route",
+        },
+        {
+            "label": "+20 min",
+            "stress": 38,
+            "eta_min": 22,
+            "traffic_level": "low",
+            "note": "smooth ride",
+            "safety_risk": "low",
+            "safety_note": "well-lit route",
+        },
+        {
+            "label": "+30 min",
+            "stress": 42,
+            "eta_min": 24,
+            "traffic_level": "medium",
+            "note": "slow traffic",
+            "safety_risk": "medium",
+            "safety_note": "crowded commute",
+        },
     ]
 
 
 def _best_recommendation_from_slots(slots):
     best_index = min(range(len(slots)), key=lambda i: slots[i]["stress"])
-    return "Leave now" if best_index == 0 else f"Leave in {best_index * 10} minutes"
+    return "Leave now" if best_index == 0 else f"Wait {best_index * 10} minutes"
 
 
-def _build_fallback_response(origin, destination, reason):
+def _build_fallback_response(origin, destination, reason, prefer_safe_commute=False):
     response = dict(FALLBACK_RESPONSE)
     response["route"] = f"{origin} → {destination}" if origin and destination else "Unable to determine"
     response["slots"] = _default_slot_template()
     response["recommendation"] = _best_recommendation_from_slots(response["slots"])
     response["reason"] = reason
+    response["prefer_safe_commute"] = bool(prefer_safe_commute)
+    response["time_insight"] = _build_time_insight(response["slots"])
     return response
+
+
+def _build_time_insight(slots):
+    if not slots or len(slots) < 2:
+        return "Leaving now saves 0 minutes"
+
+    now_eta = max(0, _coerce_int(slots[0].get("eta_min"), 0))
+    later_eta = max(0, _coerce_int(slots[1].get("eta_min"), 0))
+    arrival_now_min = now_eta
+    arrival_later_min = SLOT_OFFSETS_MIN[1] + later_eta
+    arrival_delta = arrival_later_min - arrival_now_min
+
+    if arrival_delta <= 3:
+        return "You can leave 10 minutes later and still arrive at the same time"
+    return f"Leaving now saves {arrival_delta} minutes"
 
 
 def _normalize_result_shape(result, origin, destination):
@@ -64,15 +161,27 @@ def _normalize_result_shape(result, origin, destination):
         raw_slot = raw_slots[idx] if idx < len(raw_slots) and isinstance(raw_slots[idx], dict) else {}
         stress = max(0, min(100, _coerce_int(raw_slot.get("stress"), 50)))
         eta_min = max(0, _coerce_int(raw_slot.get("eta_min"), 0))
+        traffic_level = str(raw_slot.get("traffic_level", "medium")).strip().lower()
+        if traffic_level not in {"low", "medium", "high"}:
+            traffic_level = "medium"
+        safety_risk = str(raw_slot.get("safety_risk", "medium")).strip().lower()
+        if safety_risk not in {"low", "medium", "high"}:
+            safety_risk = "medium"
         note = str(raw_slot.get("note", "")).strip() or "Estimated"
-        slots.append(
-            {
-                "label": label,
-                "stress": stress,
-                "eta_min": eta_min,
-                "note": note,
-            }
-        )
+        normalized_slot = {
+            "label": label,
+            "stress": stress,
+            "eta_min": eta_min,
+            "traffic_level": traffic_level,
+            "note": note,
+            "safety_risk": safety_risk,
+        }
+
+        safety_note = str(raw_slot.get("safety_note", "")).strip()
+        if safety_note:
+            normalized_slot["safety_note"] = safety_note
+
+        slots.append(normalized_slot)
 
     route = str(result.get("route", "")).strip() if isinstance(result, dict) else ""
     if not route:
@@ -88,14 +197,30 @@ def _normalize_result_shape(result, origin, destination):
 
     raw_drivers = result.get("stress_drivers", []) if isinstance(result, dict) else []
     stress_drivers = [str(item).strip() for item in raw_drivers if str(item).strip()][:4]
+    time_insight = str(result.get("time_insight", "")).strip() if isinstance(result, dict) else ""
+    if not time_insight:
+        time_insight = _build_time_insight(slots)
 
-    return {
+    normalized = {
         "route": route,
         "slots": slots,
         "recommendation": recommendation,
         "reason": reason,
+        "time_insight": time_insight,
         "stress_drivers": stress_drivers,
+        "prefer_safe_commute": _coerce_bool(result.get("prefer_safe_commute", False)) if isinstance(result, dict) else False,
     }
+
+    if isinstance(result, dict):
+        carpool_suggestion = str(result.get("carpool_suggestion", "")).strip()
+        if carpool_suggestion:
+            normalized["carpool_suggestion"] = carpool_suggestion
+
+        time_insight = str(result.get("time_insight", "")).strip()
+        if time_insight:
+            normalized["time_insight"] = time_insight
+
+    return normalized
 
 
 @csrf_exempt
@@ -112,6 +237,7 @@ def analyze(request):
     mode = body.get("mode", "car").strip()
     day_type = body.get("day_type", "weekday").strip()
     current_time = body.get("current_time", "09:00").strip()
+    prefer_safe_commute = _coerce_bool(body.get("prefer_safe_commute", False), default=False)
 
     if not origin or not destination:
         return JsonResponse(
@@ -120,7 +246,7 @@ def analyze(request):
         )
 
     try:
-        result = analyze_commute(origin, destination, mode, day_type, current_time)
+        result = analyze_commute(origin, destination, mode, day_type, current_time, prefer_safe_commute)
         normalized = _normalize_result_shape(result, origin, destination)
         return JsonResponse(normalized)
 
@@ -132,5 +258,6 @@ def analyze(request):
                 origin,
                 destination,
                 "Live services timed out — estimated local traffic pattern used.",
+                prefer_safe_commute,
             )
         )
