@@ -1,4 +1,5 @@
 import json
+import re
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -8,6 +9,11 @@ from .commute_engine import analyze_commute
 
 SLOT_LABELS = ["Leave now", "+10 min", "+20 min", "+30 min"]
 SLOT_OFFSETS_MIN = [0, 10, 20, 30]
+MAX_REQUEST_BYTES = 16 * 1024
+MAX_TEXT_FIELD_LENGTH = 120
+TIME_24H_REGEX = re.compile(r"^(?:[01]\d|2[0-3]):[0-5]\d$")
+ALLOWED_MODES = {"car", "cab", "taxi", "auto", "bike", "motorcycle", "bus", "metro", "walk", "foot"}
+ALLOWED_DAY_TYPES = {"weekday", "weekend"}
 
 
 FALLBACK_RESPONSE = {
@@ -79,6 +85,28 @@ def _coerce_bool(value, default=False):
         if normalized in {"0", "false", "no", "off", ""}:
             return False
     return default
+
+
+def _normalized_text(value, default=""):
+    text = str(value or default).strip()
+    return text[:MAX_TEXT_FIELD_LENGTH]
+
+
+def _validated_time(value, default="09:00"):
+    time_value = str(value or default).strip()
+    if TIME_24H_REGEX.match(time_value):
+        return time_value
+    return default
+
+
+def _validated_mode(value, default="car"):
+    mode = str(value or default).strip().lower()
+    return mode if mode in ALLOWED_MODES else default
+
+
+def _validated_day_type(value, default="weekday"):
+    day_type = str(value or default).strip().lower()
+    return day_type if day_type in ALLOWED_DAY_TYPES else default
 
 
 def _default_slot_template():
@@ -227,16 +255,22 @@ def _normalize_result_shape(result, origin, destination):
 @require_POST
 def analyze(request):
     """POST /api/analyze/ — run commute analysis using free APIs with safe fallbacks."""
+    if request.content_type != "application/json":
+        return JsonResponse({"error": "Content-Type must be application/json"}, status=415)
+
+    if len(request.body) > MAX_REQUEST_BYTES:
+        return JsonResponse({"error": "Request body is too large"}, status=413)
+
     try:
         body = json.loads(request.body)
     except (json.JSONDecodeError, ValueError):
         return JsonResponse({"error": "Invalid JSON body"}, status=400)
 
-    origin = body.get("origin", "").strip()
-    destination = body.get("destination", "").strip()
-    mode = body.get("mode", "car").strip()
-    day_type = body.get("day_type", "weekday").strip()
-    current_time = body.get("current_time", "09:00").strip()
+    origin = _normalized_text(body.get("origin", ""))
+    destination = _normalized_text(body.get("destination", ""))
+    mode = _validated_mode(body.get("mode", "car"), default="car")
+    day_type = _validated_day_type(body.get("day_type", "weekday"), default="weekday")
+    current_time = _validated_time(body.get("current_time", "09:00"), default="09:00")
     prefer_safe_commute = _coerce_bool(body.get("prefer_safe_commute", False), default=False)
 
     if not origin or not destination:
