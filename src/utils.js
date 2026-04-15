@@ -102,12 +102,28 @@ export function safeString(value, fallback = '') {
   return typeof value === 'string' && value.trim() ? value.trim() : fallback;
 }
 
+function getApiBaseUrl() {
+  const fromEnv = safeString(process.env.REACT_APP_API_BASE_URL);
+  if (fromEnv) {
+    return fromEnv.replace(/\/$/, '');
+  }
+
+  const isLocalhost =
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+  // In CRA dev mode, point API calls to Django directly.
+  return isLocalhost ? 'http://127.0.0.1:8000' : '';
+}
+
 export async function fetchAnalyze(payload, timeoutMs = 4500) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const apiBase = getApiBaseUrl();
+  const apiUrl = `${apiBase}/api/analyze/`;
   
   try {
-    const response = await fetch('/api/analyze/', {
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
