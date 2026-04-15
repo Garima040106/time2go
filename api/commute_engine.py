@@ -627,7 +627,7 @@ def _safe_mode_stress_adjustment(prefer_safe_commute, active_mode):
 
 def _preferred_commute_note(prefer_safe_commute, active_mode):
     if prefer_safe_commute and active_mode in SAFE_MODE_OPTIONS:
-        return "safer commute option"
+        return "safer option"
     return ""
 
 
@@ -952,8 +952,10 @@ def analyze_commute(origin, destination, mode, day_type, current_time, prefer_sa
             for slot in quick_result["slots"]:
                 slot["stress"] = int(_bounded(slot["stress"] + _carpool_stress_adjustment(True), 0, 100))
                 slot["note"] = _merge_slot_note(slot["note"], _carpool_note(True))
-            quick_result["carpool_suggestion"] = "High chance of shared rides on this route"
+            quick_result["carpool_suggestion"] = "Likely shared rides available"
         quick_result["time_insight"] = _build_time_insight(quick_result["slots"])
+        best_idx = min(range(len(quick_result["slots"])), key=lambda i: quick_result["slots"][i]["stress"])
+        quick_result["safety_note"] = quick_result["slots"][best_idx].get("safety_note", "")
         quick_result["prefer_safe_commute"] = bool(prefer_safe_commute)
         return quick_result
 
@@ -1018,10 +1020,11 @@ def analyze_commute(origin, destination, mode, day_type, current_time, prefer_sa
         "reason": reason,
         "stress_drivers": drivers,
         "time_insight": _build_time_insight(slots),
+        "safety_note": slots[best_idx].get("safety_note", ""),
         "prefer_safe_commute": bool(prefer_safe_commute),
     }
 
     if carpool_possible:
-        result["carpool_suggestion"] = "High chance of shared rides on this route"
+        result["carpool_suggestion"] = "Likely shared rides available"
 
     return result

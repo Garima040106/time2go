@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function InsightSection({ drivers, safetyRisk }) {
+export default function InsightSection({ drivers }) {
   const hasDrivers = drivers && drivers.length > 0;
 
   return (
@@ -19,7 +19,6 @@ export default function InsightSection({ drivers, safetyRisk }) {
           <span>Realtime traffic and route reliability were used for this result.</span>
         </div>
       )}
-      <div className="risk-note">Safety risk estimate: {safetyRisk || 'N/A'}</div>
     </div>
   );
 }

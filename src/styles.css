@@ -392,6 +392,32 @@ select:focus {
   font-weight: 700;
 }
 
+.rec-hints {
+  margin-top: 0.55rem;
+  display: grid;
+  gap: 0.24rem;
+}
+
+.rec-hint {
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.rec-women-details {
+  margin-top: 0.55rem;
+  border-top: 1px dashed #d7e7e1;
+  padding-top: 0.55rem;
+  display: grid;
+  gap: 0.22rem;
+}
+
+.rec-women-line {
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
 .route-line {
   margin-top: 0.8rem;
   color: #286d5f;

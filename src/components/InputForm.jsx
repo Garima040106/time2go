@@ -102,9 +102,9 @@ export default function InputForm({
             onChange={(e) => onPreferSafeChange(e.target.checked)}
             disabled={loading}
           />
-          <label htmlFor="prefer-safe">Prefer women-friendly commute</label>
+          <label htmlFor="prefer-safe">Prefer safer commute</label>
         </div>
-        <div className="toggle-hint">Prioritizes bus and metro when enabled.</div>
+        <div className="toggle-hint">Prefer safer commute for bus and metro first.</div>
       </div>
 
       {/* Analyze Button */}

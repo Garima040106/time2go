@@ -148,7 +148,7 @@ export async function fetchAnalyze(payload, timeoutMs = 4500) {
 }
 
 export function generateSimulatedFallback(origin, destination, preferSafeCommute) {
-  const saferNote = preferSafeCommute ? 'safer commute option' : '';
+  const saferNote = preferSafeCommute ? 'safer option' : '';
   const mergeNote = (base) => saferNote ? `${base}; ${saferNote}` : base;
 
   return {
@@ -166,6 +166,8 @@ export function generateSimulatedFallback(origin, destination, preferSafeCommute
       'Short-term estimate built from typical peak-hour patterns',
       'Try again shortly for live route and weather signals'
     ],
+    safety_note: 'well-lit route',
+    carpool_suggestion: '',
     prefer_safe_commute: !!preferSafeCommute
   };
 }
@@ -245,6 +247,14 @@ export function normalizeResult(payload, origin, destination) {
     safetyRisk = slotsWithLiveNotes[bestIdx].safety_risk;
   }
 
+  let safetyNote = safeString(payload?.safety_note);
+  if (!safetyNote && slotsWithLiveNotes.length > 0) {
+    const bestIdx = slotsWithLiveNotes.reduce((minIdx, slot, idx) =>
+      slot.stress < slotsWithLiveNotes[minIdx].stress ? idx : minIdx
+    , 0);
+    safetyNote = safeString(slotsWithLiveNotes[bestIdx].safety_note);
+  }
+
   return {
     route: safeString(payload?.route, `${origin} → ${destination}`),
     recommendation,
@@ -254,5 +264,7 @@ export function normalizeResult(payload, origin, destination) {
     stress_drivers: stressDrivers,
     prefer_safe_commute: !!payload?.prefer_safe_commute,
     safety_risk: safetyRisk,
+    safety_note: safetyNote,
+    carpool_suggestion: safeString(payload?.carpool_suggestion),
   };
 }

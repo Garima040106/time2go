@@ -127,11 +127,14 @@ export default function App() {
               reason={results.reason}
               timeInsight={results.time_insight}
               route={results.route}
+              safetyNote={results.safety_note}
+              carpoolSuggestion={results.carpool_suggestion}
+              preferSafeCommute={results.prefer_safe_commute}
             />
 
             <StressSlots slots={results.slots} />
 
-            <InsightSection drivers={results.stress_drivers} safetyRisk={results.safety_risk} />
+            <InsightSection drivers={results.stress_drivers} />
 
             <button className="btn-demo" onClick={() => setResults(null)}>
               ← New Analysis

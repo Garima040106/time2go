@@ -62,6 +62,8 @@ FALLBACK_RESPONSE = {
         "Live traffic data temporarily unavailable",
         "Estimates based on general patterns",
     ],
+    "safety_note": "well-lit route",
+    "carpool_suggestion": "",
     "prefer_safe_commute": False,
 }
 
@@ -161,6 +163,9 @@ def _build_fallback_response(origin, destination, reason, prefer_safe_commute=Fa
     response["slots"] = _default_slot_template()
     response["recommendation"] = _best_recommendation_from_slots(response["slots"])
     response["reason"] = reason
+    best_idx = min(range(len(response["slots"])), key=lambda i: response["slots"][i]["stress"])
+    response["safety_note"] = str(response["slots"][best_idx].get("safety_note", "")).strip()
+    response["carpool_suggestion"] = ""
     response["prefer_safe_commute"] = bool(prefer_safe_commute)
     response["time_insight"] = _build_time_insight(response["slots"])
     return response
@@ -236,13 +241,20 @@ def _normalize_result_shape(result, origin, destination):
         "reason": reason,
         "time_insight": time_insight,
         "stress_drivers": stress_drivers,
+        "safety_note": "",
+        "carpool_suggestion": "",
         "prefer_safe_commute": _coerce_bool(result.get("prefer_safe_commute", False)) if isinstance(result, dict) else False,
     }
 
     if isinstance(result, dict):
+        safety_note = str(result.get("safety_note", "")).strip()
+        if not safety_note and slots:
+            best_idx = min(range(len(slots)), key=lambda i: slots[i]["stress"])
+            safety_note = str(slots[best_idx].get("safety_note", "")).strip()
+        normalized["safety_note"] = safety_note
+
         carpool_suggestion = str(result.get("carpool_suggestion", "")).strip()
-        if carpool_suggestion:
-            normalized["carpool_suggestion"] = carpool_suggestion
+        normalized["carpool_suggestion"] = carpool_suggestion
 
         time_insight = str(result.get("time_insight", "")).strip()
         if time_insight:
