@@ -7,9 +7,8 @@ Tiny Django backend + frontend app for commute departure suggestions.
 - One frontend page at `/` (served from `index.html` with the existing layout).
 - One backend endpoint: `POST /api/analyze/`.
 - Real-data commute pipeline using free services where available:
-	- Geocoding: OpenStreetMap Nominatim
-	- Routing: OSRM public API
-	- Weather: Open-Meteo hourly forecast
+	- Default mode: local simulation (no external dependency required)
+	- Optional route signal mode: OpenStreetMap Nominatim + OSRM public API
 - No database usage in app logic.
 - No auth.
 - CORS enabled (`CORS_ALLOW_ALL_ORIGINS=True`) for local frontend/backend flexibility.
@@ -35,18 +34,26 @@ Tiny Django backend + frontend app for commute departure suggestions.
 {
 	"route": "",
 	"slots": [
-		{"label": "Leave now", "stress": 0, "eta_min": 0, "note": ""},
-		{"label": "+10 min", "stress": 0, "eta_min": 0, "note": ""},
-		{"label": "+20 min", "stress": 0, "eta_min": 0, "note": ""},
-		{"label": "+30 min", "stress": 0, "eta_min": 0, "note": ""}
+		{"label": "Leave now", "stress": 0, "eta_min": 0, "traffic_level": "medium", "note": "", "safety_note": ""},
+		{"label": "+10 min", "stress": 0, "eta_min": 0, "traffic_level": "low", "note": "", "safety_note": ""},
+		{"label": "+20 min", "stress": 0, "eta_min": 0, "traffic_level": "low", "note": "", "safety_note": ""},
+		{"label": "+30 min", "stress": 0, "eta_min": 0, "traffic_level": "high", "note": "", "safety_note": ""}
 	],
 	"recommendation": "",
 	"reason": "",
-	"stress_drivers": []
+	"stress_drivers": [],
+	"time_insight": "",
+	"carpool_suggestion": ""
 }
 ```
 
+Notes:
+- Required core fields: recommendation, reason, slots (stress + eta_min + note), stress_drivers.
+- Optional enrichments: slot-level safety_note, top-level carpool_suggestion, and time_insight.
+
 ## Run locally
+
+### Backend
 
 1. Install dependencies:
 
@@ -56,7 +63,11 @@ pip install -r requirements.txt
 
 2. Optional env in `.env`:
 
-No API key is required for the default pipeline.
+No API key is required. To enable lightweight live route probing, set:
+
+```bash
+TIME2GO_USE_ROUTE_API=1
+```
 
 3. Start server:
 
@@ -64,6 +75,32 @@ No API key is required for the default pipeline.
 python manage.py runserver
 ```
 
-4. Open:
+The API will be available at `http://127.0.0.1:8000/api/analyze/`.
 
-`http://127.0.0.1:8000/`
+### Frontend (React)
+
+The frontend is a React 18 app with functional components. To run locally:
+
+1. Install Node dependencies:
+
+```bash
+npm install
+```
+
+2. Start development server:
+
+```bash
+npm start
+```
+
+3. The dev server will open at `http://127.0.0.1:3000/`.
+
+The React app makes API requests to `http://127.0.0.1:8000/api/analyze/`. Ensure the backend is running before using the frontend.
+
+**Build for production:**
+
+```bash
+npm run build
+```
+
+This creates an optimized production build in the `build/` directory.

@@ -54,6 +54,38 @@
 
     .form-group { margin-bottom: 14px; }
 
+    .toggle-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid #dcefe8;
+      border-radius: 10px;
+      background: #f7fcfa;
+    }
+
+    .toggle-group label {
+      margin: 0;
+      text-transform: none;
+      letter-spacing: 0;
+      font-size: 13px;
+      color: #2d5b4e;
+      font-weight: 600;
+    }
+
+    .toggle-group input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: #1D9E75;
+      flex-shrink: 0;
+    }
+
+    .toggle-hint {
+      margin-top: 5px;
+      font-size: 11px;
+      color: #7a8d86;
+    }
+
     input, select {
       width: 100%;
       padding: 10px 12px;
@@ -189,6 +221,33 @@
 
     .rec-reason { font-size: 13px; color: #0F6E56; line-height: 1.5; }
 
+    .rec-insight {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #0a5c49;
+      font-weight: 600;
+    }
+
+    .insight-strip {
+      margin-top: -6px;
+      margin-bottom: 1.05rem;
+      padding-left: 2px;
+    }
+
+    .time-insight {
+      font-size: 12px;
+      color: #236957;
+      font-weight: 600;
+      line-height: 1.45;
+    }
+
+    .soft-signals {
+      margin-top: 4px;
+      font-size: 11px;
+      color: #7a8d86;
+      line-height: 1.4;
+    }
+
     .slots-label {
       font-size: 11px;
       font-weight: 600;
@@ -240,9 +299,37 @@
       overflow: hidden;
     }
 
-    .slot-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+    .slot-fill {
+      height: 100%;
+      border-radius: 2px;
+      width: 0;
+      transition: width 0.85s cubic-bezier(0.2, 0.8, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+      animation: stressPulse 2.8s ease-in-out infinite;
+    }
+
+    .slot-fill::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.38) 50%, transparent 100%);
+      transform: translateX(-120%);
+      animation: barSweep 2.2s ease-in-out infinite;
+    }
+
+    @keyframes stressPulse {
+      0%, 100% { opacity: 0.86; }
+      50% { opacity: 1; }
+    }
+
+    @keyframes barSweep {
+      0% { transform: translateX(-120%); }
+      55%, 100% { transform: translateX(120%); }
+    }
     .slot-eta { font-size: 11px; color: #aaa; }
     .slot-note { font-size: 10px; color: #bbb; margin-top: 3px; line-height: 1.3; }
+    .slot-subtle { font-size: 9px; color: #9aaba5; margin-top: 2px; }
 
     .stress-legend {
       display: flex;
@@ -427,6 +514,14 @@
     <input type="time" id="time" />
   </div>
 
+  <div class="form-group">
+    <div class="toggle-group">
+      <input type="checkbox" id="preferSafeCommute" />
+      <label for="preferSafeCommute">Prefer women-friendly commute</label>
+    </div>
+    <div class="toggle-hint">Prioritizes safer shared modes when possible.</div>
+  </div>
+
   <button class="btn" id="analyzeBtn" onclick="analyze()">Analyze best departure window →</button>
   <button class="btn-demo" onclick="loadDemo('koramangala-whitefield')">🚀 Try quick demo</button>
 
@@ -453,6 +548,11 @@
       <div class="rec-action" id="rec-action">—</div>
       <div class="rec-reason" id="rec-route" style="font-weight:600; margin-bottom:2px;">—</div>
       <div class="rec-reason" id="rec-reason">—</div>
+    </div>
+
+    <div class="insight-strip">
+      <div class="time-insight" id="time-insight"></div>
+      <div class="soft-signals" id="soft-signals"></div>
     </div>
 
     <div class="slots-label">Stress index by departure slot</div>
@@ -506,7 +606,8 @@
         destination: 'Whitefield, Bengaluru',
         mode: 'car',
         day_type: 'weekday',
-        current_time: '08:45'
+        current_time: '08:45',
+        prefer_safe_commute: false
       },
       result: {
         route: 'Koramangala → Whitefield',
@@ -530,7 +631,8 @@
         destination: 'Hebbal Flyover, Bengaluru',
         mode: 'bike',
         day_type: 'weekday',
-        current_time: '18:10'
+        current_time: '18:10',
+        prefer_safe_commute: true
       },
       result: {
         route: 'Jayanagar → Hebbal Flyover',
@@ -554,7 +656,8 @@
         destination: 'Kempegowda International Airport, Bengaluru',
         mode: 'car',
         day_type: 'weekend',
-        current_time: '13:40'
+        current_time: '13:40',
+        prefer_safe_commute: false
       },
       result: {
         route: 'Indiranagar → Bengaluru Airport',
@@ -584,6 +687,7 @@
     document.getElementById('mode').value = form.mode;
     document.getElementById('day').value = form.day_type;
     document.getElementById('time').value = form.current_time;
+    document.getElementById('preferSafeCommute').checked = !!form.prefer_safe_commute;
 
     setError('');
     renderResults(scenario.result);
@@ -624,21 +728,26 @@
     return (typeof v === 'string' && v.trim()) ? v.trim() : fallback;
   }
 
-  function simulatedFallback(origin, destination) {
+  function simulatedFallback(origin, destination, preferSafeCommute) {
+    const saferNote = preferSafeCommute ? 'safer commute option' : '';
+    const mergeNote = (base) => saferNote ? `${base}; ${saferNote}` : base;
+
     return {
       route: `${origin} → ${destination}`,
       recommendation: 'Leave in 20 minutes',
       reason: 'Backend is resting; showing a quick local estimate so you can still decide.',
+      time_insight: 'A short wait likely improves stress without a major arrival delay.',
       slots: [
-        { label: 'Leave now', stress: 64, eta_min: 36, note: 'Signals stacking' },
-        { label: '+10 min', stress: 58, eta_min: 34, note: 'Flow stabilizing' },
-        { label: '+20 min', stress: 52, eta_min: 32, note: 'Best gap window' },
-        { label: '+30 min', stress: 57, eta_min: 33, note: 'Back to busy' }
+        { label: 'Leave now', stress: preferSafeCommute ? 61 : 64, eta_min: 36, note: mergeNote('Signals stacking') },
+        { label: '+10 min', stress: preferSafeCommute ? 55 : 58, eta_min: 34, note: mergeNote('Flow stabilizing') },
+        { label: '+20 min', stress: preferSafeCommute ? 49 : 52, eta_min: 32, note: mergeNote('Best gap window') },
+        { label: '+30 min', stress: preferSafeCommute ? 54 : 57, eta_min: 33, note: mergeNote('Back to busy') }
       ],
       stress_drivers: [
         'Short-term estimate built from typical peak-hour patterns',
         'Try again shortly for live route and weather signals'
-      ]
+      ],
+      prefer_safe_commute: !!preferSafeCommute
     };
   }
 
@@ -651,14 +760,26 @@
       const stress = Math.max(0, Math.min(100, toInt(src.stress, 55)));
       const eta = Math.max(1, toInt(src.eta_min, 30));
       const note = safeString(src.note, 'Estimated');
+      const safetyNote = safeString(src.safety_note);
       return {
         label: safeString(src.label, label),
         stress,
         eta_min: eta,
         note,
+        safety_note: safetyNote,
         band: stressBand(stress)
       };
     });
+
+    let timeInsight = safeString(payload?.time_insight);
+    if (!timeInsight) {
+      const nowArrival = slots[0].eta_min;
+      const laterArrival = 10 + slots[1].eta_min;
+      const arrivalDelta = laterArrival - nowArrival;
+      timeInsight = arrivalDelta <= 3
+        ? 'A small delay may keep arrival time nearly unchanged.'
+        : `Leaving now saves ${arrivalDelta} minutes`;
+    }
 
     const recommendation = safeString(payload?.recommendation, 'Leave now');
     const reason = safeString(payload?.reason, 'Using best available traffic estimate.');
@@ -670,12 +791,22 @@
           .slice(0, 4)
       : [];
 
+    const carpoolSuggestion = safeString(payload?.carpool_suggestion);
+
+    const safetyNotes = slots
+      .map(slot => safeString(slot.safety_note))
+      .filter(Boolean);
+    const safetyHint = safetyNotes.length ? safetyNotes[0] : '';
+
     return {
       route: safeString(payload?.route, `${origin} → ${destination}`),
       recommendation,
       reason,
+      time_insight: timeInsight,
       slots,
-      stress_drivers: stressDrivers
+      stress_drivers: stressDrivers,
+      carpool_suggestion: carpoolSuggestion,
+      safety_hint: safetyHint
     };
   }
 
@@ -713,6 +844,7 @@
     const mode   = document.getElementById('mode').value;
     const day    = document.getElementById('day').value;
     const time   = document.getElementById('time').value;
+    const preferSafeCommute = document.getElementById('preferSafeCommute').checked;
 
     setError('');
 
@@ -732,12 +864,13 @@
         destination: dest,
         mode: mode,
         day_type: day,
-        current_time: time
+        current_time: time,
+        prefer_safe_commute: preferSafeCommute
       });
       const result = normalizeResult(raw, origin, dest);
       renderResults(result);
     } catch(e) {
-      const fallback = simulatedFallback(origin, dest);
+      const fallback = simulatedFallback(origin, dest, preferSafeCommute);
       renderResults(fallback);
       setError('Live data is temporarily unavailable. Showing a quick local estimate for this route.', true);
       console.error(e);
@@ -756,7 +889,13 @@
 
     document.getElementById('rec-action').textContent = smartRec;
     document.getElementById('rec-route').textContent = `Route: ${result.route}`;
-    document.getElementById('rec-reason').textContent = `${result.reason} · ~${bestSlot.eta_min} min in the best slot.`;
+    document.getElementById('rec-reason').textContent = `${result.reason} Best slot ETA is ~${bestSlot.eta_min} min.`;
+    document.getElementById('time-insight').textContent = result.time_insight || '';
+
+    const subtleSignals = [];
+    if (result.safety_hint) subtleSignals.push(`Safety: ${result.safety_hint}`);
+    if (result.carpool_suggestion) subtleSignals.push(result.carpool_suggestion);
+    document.getElementById('soft-signals').textContent = subtleSignals.join(' · ');
 
     const bestStress = Math.min(...result.slots.map(s => s.stress));
     const slotsEl = document.getElementById('slots');
@@ -766,6 +905,9 @@
       const isBest = slot.stress === bestStress;
       const pct = Math.min(100, Math.round(slot.stress));
       const color = stressColor(pct);
+      const safetyLine = slot.safety_note && !slot.note.toLowerCase().includes(slot.safety_note.toLowerCase())
+        ? `<div class="slot-subtle">${slot.safety_note}</div>`
+        : '';
 
       const div = document.createElement('div');
       div.className = 'slot' + (isBest ? ' best' : '');
@@ -775,12 +917,18 @@
         <div class="slot-stress" style="color:${color}">${pct}</div>
         <div class="slot-note" style="color:${color};font-weight:600">${slot.band}</div>
         <div class="slot-bar">
-          <div class="slot-fill" style="width:${pct}%;background:${color}"></div>
+          <div class="slot-fill" data-target-width="${pct}%" style="background:${color}"></div>
         </div>
         <div class="slot-eta">${slot.eta_min} min</div>
         <div class="slot-note">${slot.note}</div>
+        ${safetyLine}
       `;
       slotsEl.appendChild(div);
+
+      const fill = div.querySelector('.slot-fill');
+      requestAnimationFrame(() => {
+        fill.style.width = fill.dataset.targetWidth || '0%';
+      });
     });
 
     if (result.stress_drivers && result.stress_drivers.length) {
